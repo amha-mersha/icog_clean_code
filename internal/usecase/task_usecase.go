@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"net/http"
 	"strings"
 	"time"
 
@@ -26,13 +25,13 @@ func (taskUC *taskItemUC) CreateTask(task *dto.TaskCreateDTO) error {
 
 	// Validating task fields
 	if task.Title == "" || len(task.Title) > 255 {
-		return domain.NewCustomeError(http.StatusBadRequest, "task title can't be more than 255 characters.")
+		return domain.NewCustomeError(domain.ERR_BAD_REQUEST, "task title can't be more than 255 characters.")
 	}
 	if len(task.Description) > 1000 {
-		return domain.NewCustomeError(http.StatusBadRequest, "task description can't be more than 1000 characters.")
+		return domain.NewCustomeError(domain.ERR_BAD_REQUEST, "task description can't be more than 1000 characters.")
 	}
 	if task.Deadline.Before(time.Now()) {
-		return domain.NewCustomeError(http.StatusBadRequest, "deadline must be a future date.")
+		return domain.NewCustomeError(domain.ERR_BAD_REQUEST, "deadline must be a future date.")
 	}
 	if !dto.ValidStatus(task.Status) {
 		task.Status = "pending"
@@ -50,7 +49,42 @@ func (taskUC *taskItemUC) CreateTask(task *dto.TaskCreateDTO) error {
 	return taskUC.repo.Create(&newTask)
 }
 
-// func (taskUC *taskItemUC) GetTask(id uuid.UUID) (*domain.TaskItem, error) {}
-// func (taskUC *taskItemUC) ListTasks() ([]domain.TaskItem, error)          {}
-// func (taskUC *taskItemUC) UpdateTask(task *domain.TaskItem) error         {}
-// func (taskUC *taskItemUC) DeleteTask(id uuid.UUID) error                  {}
+func (taskUC *taskItemUC) GetTask(id uuid.UUID) (*domain.TaskItem, error) {
+	return taskUC.repo.GetByID(id)
+}
+
+func (taskUC *taskItemUC) ListTasks() ([]domain.TaskItem, error) {
+	return taskUC.repo.GetAll()
+}
+
+func (taskUC *taskItemUC) UpdateTask(task *dto.TaskUpdateDTO) error {
+	// Trim spaces
+	task.Title = strings.TrimSpace(task.Title)
+	task.Description = strings.TrimSpace(task.Description)
+
+	// Validating task fields
+	if task.Title == "" || len(task.Title) > 255 {
+		return domain.NewCustomeError(domain.ERR_BAD_REQUEST, "task title can't be more than 255 characters.")
+	}
+	if len(task.Description) > 1000 {
+		return domain.NewCustomeError(domain.ERR_BAD_REQUEST, "task description can't be more than 1000 characters.")
+	}
+	if task.Deadline.Before(time.Now()) {
+		return domain.NewCustomeError(domain.ERR_BAD_REQUEST, "deadline must be a future date.")
+	}
+	if !dto.ValidStatus(task.Status) {
+		return domain.NewCustomeError(domain.ERR_BAD_REQUEST, "status must be pending, in_progress, or completed.")
+	}
+	return taskUC.repo.Update(task)
+}
+
+func (taskUC *taskItemUC) DeleteTask(id uuid.UUID) error {
+	return taskUC.repo.Delete(id)
+}
+
+func (taskUC *taskItemUC) GetTaskByStatus(status string) ([]domain.TaskItem, error) {
+	if !dto.ValidStatus(status) {
+		return nil, domain.NewCustomeError(domain.ERR_BAD_REQUEST, "status must be pending, in_progress, or completed.")
+	}
+	return taskUC.repo.GetByKey("status", status)
+}

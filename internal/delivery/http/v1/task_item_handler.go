@@ -62,35 +62,73 @@ func (taskCnt *taskHandler) uploadTaskItem(ctx *gin.Context) {
 	})
 }
 
-
-func (taskCnt *taskHandler) GetTaskByID(ctx *gin.Context)  {
-	rawID:= ctx.Param("id")
+func (taskCnt *taskHandler) GetTaskByID(ctx *gin.Context) {
+	rawID := ctx.Param("id")
 	taskID, err := uuid.Parse(rawID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID format"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID format"})
 		return
 	}
-
+	task, errUc := taskCnt.u.GetTask(taskID)
+	if errUc != nil {
+		ctx.JSON(GetHTTPErrorCode(*errUc), gin.H{"error": errUc.Error()})
+		return
+	}
+	ctx.JSON(http.StatusCreated, gin.H{
+		"message": task,
+	})
 }
 
-func (taskCnt *taskHandler) GetAllTasks(ctx *gin.Context)  {
-	task_id:= ctx.Param("id")
-	if task_id
-}
-func (taskCnt *taskHandler) UpdateTask(ctx *gin.Context)  {
-	task_id:= ctx.Param("id")
-	if task_id
-}
-func (taskCnt *taskHandler) DeleteTask(ctx *gin.Context)  {
-	task_id:= ctx.Param("id")
-	if task_id
-}
-func (taskCnt *taskHandler) UpdateTaskStatus(ctx *gin.Context)  {
-	task_id:= ctx.Param("id")
-	if task_id
-}
-func (taskCnt *taskHandler) GetTasksByStatus(ctx *gin.Context)  {
-	task_id:= ctx.Param("id")
-	if task_id
+func (h *taskHandler) GetAllTasks(c *gin.Context) {
+	tasks, err := h.u.ListTasks()
+	if err != nil {
+		c.JSON(GetHTTPErrorCode(*err), gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, tasks)
 }
 
+func (taskCnt *taskHandler) UpdateTask(ctx *gin.Context) {
+	var newTaskItem dto.TaskCreateDTO
+
+	if err := ctx.ShouldBindJSON(newTaskItem); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	if err := taskCnt.u.CreateTask(&newTaskItem); err != nil {
+		ctx.JSON(GetHTTPErrorCode(*err), gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	ctx.JSON(http.StatusCreated, gin.H{
+		"message": newTaskItem,
+	})
+}
+
+func (taskCnt *taskHandler) DeleteTask(ctx *gin.Context) {
+	rawID := ctx.Param("id")
+	taskID, err := uuid.Parse(rawID)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID format"})
+		return
+	}
+	errUc := taskCnt.u.DeleteTask(taskID)
+	if errUc != nil {
+		ctx.JSON(GetHTTPErrorCode(*errUc), gin.H{"error": errUc.Error()})
+		return
+	}
+	ctx.JSON(http.StatusAccepted, gin.H{
+		"message": "successfuly deleted",
+	})
+}
+
+func (taskCnt *taskHandler) GetTasksByStatus(ctx *gin.Context) {
+	statusID := ctx.Param("id")
+	if !dto.ValidStatus(statusID) {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task status"})
+		return
+	}
+}

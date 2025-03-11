@@ -9,6 +9,7 @@ import (
 type TaskUsecase interface {
 	CreateTask(task *dto.TaskCreateDTO) *domain.CustomeError
 	GetTask(id uuid.UUID) (*domain.TaskItem, *domain.CustomeError)
+	GetTaskByStatus(status string) ([]domain.TaskItem, *domain.CustomeError)
 	ListTasks() ([]domain.TaskItem, *domain.CustomeError)
 	UpdateTask(task *domain.TaskItem) *domain.CustomeError
 	DeleteTask(id uuid.UUID) *domain.CustomeError
