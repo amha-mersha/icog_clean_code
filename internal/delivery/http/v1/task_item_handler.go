@@ -6,7 +6,6 @@ import (
 
 	"github.com/amha-mersha/icog_clean_code/internal/domain"
 	"github.com/amha-mersha/icog_clean_code/internal/domain/dto"
-	"github.com/amha-mersha/icog_clean_code/internal/repository"
 	"github.com/amha-mersha/icog_clean_code/internal/usecase"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -14,15 +13,13 @@ import (
 
 type TaskHandler struct {
 	u usecase.TaskUsecase
-	r repository.TaskRepository
 }
 
 var taskCnt TaskHandler
 
-func NewTaskHandler(u usecase.TaskUsecase, r repository.TaskRepository) TaskHandler {
+func NewTaskHandler(u usecase.TaskUsecase) TaskHandler {
 	return TaskHandler{
 		u,
-		r,
 	}
 }
 func GetHTTPErrorCode(err domain.CustomeError) int {
@@ -82,7 +79,7 @@ func (taskCnt *TaskHandler) GetTaskByID(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": errUc.Error()})
 		return
 	}
-	ctx.JSON(http.StatusCreated, gin.H{
+	ctx.JSON(http.StatusOK, gin.H{
 		"message": task,
 	})
 }
