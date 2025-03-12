@@ -67,6 +67,10 @@ func (suite *TaskHandlerTestSuite) SetupTest() {
 	suite.router = gin.Default()
 	suite.router.POST("/api/v1/tasks", suite.handler.UploadTaskItem)
 	suite.router.GET("/api/v1/tasks/:id", suite.handler.GetTaskByID)
+	suite.router.GET("/api/v1/tasks", suite.handler.GetAllTasks)
+	suite.router.PUT("/api/v1/tasks", suite.handler.UpdateTask)
+	suite.router.DELETE("/api/v1/tasks/:id", suite.handler.DeleteTask)
+	suite.router.GET("/api/v1/tasks?status", suite.handler.GetTasksByStatus)
 }
 
 func (suite *TaskHandlerTestSuite) TestUploadTaskItem_Success() {
@@ -124,6 +128,81 @@ func (suite *TaskHandlerTestSuite) TestGetTaskByID_Error() {
 	assert.Equal(suite.T(), http.StatusInternalServerError, w.Code)
 	assert.Contains(suite.T(), w.Body.String(), "some error")
 }
+
+func (suite *TaskHandlerTestSuite) TestGetAllTasks_Success() {
+	tasks := []domain.TaskItem{
+		{ID: uuid.New(), Title: "Task 1", Description: "Description 1"},
+		{ID: uuid.New(), Title: "Task 2", Description: "Description 2"},
+	}
+	suite.usecase.On("ListTasks").Return(tasks, nil)
+
+	w := performRequest(suite.router, "GET", "/api/v1/tasks", nil)
+
+	assert.Equal(suite.T(), http.StatusOK, w.Code)
+	assert.Contains(suite.T(), w.Body.String(), "Task 1")
+	assert.Contains(suite.T(), w.Body.String(), "Task 2")
+}
+
+func (suite *TaskHandlerTestSuite) TestGetAllTasks_Error() {
+	suite.usecase.On("ListTasks").Return(nil, errors.New("some error"))
+
+	w := performRequest(suite.router, "GET", "/api/v1/tasks", nil)
+
+	assert.Equal(suite.T(), http.StatusInternalServerError, w.Code)
+}
+
+func (suite *TaskHandlerTestSuite) TestGetAllTasks_CustomError() {
+	customErr := &domain.CustomeError{Message: "Custom error"}
+	suite.usecase.On("ListTasks").Return(nil, customErr)
+
+	w := performRequest(suite.router, "GET", "/api/v1/tasks", nil)
+
+	assert.Equal(suite.T(), http.StatusInternalServerError, w.Code)
+}
+
+// func (suite *TaskHandlerTestSuite) TestUpdateTask_Success() {
+// 	updateDTO := dto.TaskUpdateDTO{
+// 		ID:          uuid.New(),
+// 		Title:       "Updated Task",
+// 		Description: "Updated Description",
+// 		Deadline:    time.Now(),
+// 	}
+//
+// 	suite.usecase.On("UpdateTask", &updateDTO).Return(nil)
+//
+// 	w := performRequest(suite.router, "PUT", "/api/v1/tasks", updateDTO)
+//
+// 	assert.Equal(suite.T(), http.StatusCreated, w.Code)
+// 	assert.Contains(suite.T(), w.Body.String(), "task updated successfully")
+// }
+
+// func (suite *TaskHandlerTestSuite) TestUpdateTask_BindJSONError() {
+// 	w := performRequest(suite.router, "PUT", "/api/v1/tasks", "invalid json")
+//
+// 	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
+// 	assert.Contains(suite.T(), w.Body.String(), "error")
+// }
+//
+// func (suite *TaskHandlerTestSuite) TestUpdateTask_Error() {
+// 	updateDTO := dto.TaskUpdateDTO{Title: "Updated Task", Description: "Updated Description"}
+// 	suite.usecase.On("UpdateTask", &updateDTO).Return(errors.New("some error"))
+//
+// 	w := performRequest(suite.router, "PUT", "/api/v1/tasks", updateDTO)
+//
+// 	assert.Equal(suite.T(), http.StatusInternalServerError, w.Code)
+// 	assert.Contains(suite.T(), w.Body.String(), "error")
+// }
+//
+// func (suite *TaskHandlerTestSuite) TestUpdateTask_CustomError() {
+// 	updateDTO := dto.TaskUpdateDTO{Title: "Updated Task", Description: "Updated Description"}
+// 	customErr := &domain.CustomeError{Message: "Custom error"}
+// 	suite.usecase.On("UpdateTask", &updateDTO).Return(customErr)
+//
+// 	w := performRequest(suite.router, "PUT", "/api/v1/tasks", updateDTO)
+//
+// 	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
+// 	assert.Contains(suite.T(), w.Body.String(), "Custom error")
+// }
 
 func performRequest(router *gin.Engine, method, url string, body interface{}) *httptest.ResponseRecorder {
 	var jsonBody []byte

@@ -14,14 +14,14 @@ func InitRouter(database *gorm.DB, routerVersion string, port int) {
 	router := gin.Default()
 	taskRepository := repository.NewTaskRepo(database)
 	taskUseCase := usecase.NewTaskUseCase(&taskRepository)
-	taskController := v1.NewTaskHandler(&taskUseCase, &taskRepository)
+	taskController := v1.NewTaskHandler(&taskUseCase)
 
-	taskRouter := router.Group("/api/" + routerVersion + "/tasks/")
+	taskRouter := router.Group("/api/" + routerVersion + "/tasks")
 	taskRouter.POST("", taskController.UploadTaskItem)
 	taskRouter.GET("", taskController.GetAllTasks)
-	taskRouter.GET(":id", taskController.GetTaskByID)
+	taskRouter.GET("/:id", taskController.GetTaskByID)
 	taskRouter.PUT("", taskController.UpdateTask)
-	taskRouter.DELETE(":id", taskController.DeleteTask)
+	taskRouter.DELETE("/:id", taskController.DeleteTask)
 	taskRouter.GET("?status", taskController.GetTasksByStatus)
 
 	router.Run(fmt.Sprintf(":%v", port))
