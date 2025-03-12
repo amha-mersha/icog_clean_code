@@ -1,28 +1,28 @@
 package v1
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/amha-mersha/icog_clean_code/internal/domain"
 	"github.com/amha-mersha/icog_clean_code/internal/domain/dto"
+	"github.com/amha-mersha/icog_clean_code/internal/repository"
 	"github.com/amha-mersha/icog_clean_code/internal/usecase"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
-type taskHandler struct {
+type TaskHandler struct {
 	u usecase.TaskUsecase
+	r repository.TaskRepository
 }
 
-var taskCnt taskHandler
+var taskCnt TaskHandler
 
-func NewTaskHandler(r *gin.RouterGroup, u usecase.TaskUsecase) {
-	taskCnt = taskHandler{
+func NewTaskHandler(u usecase.TaskUsecase, r repository.TaskRepository) TaskHandler {
+	return TaskHandler{
 		u,
-	}
-	taskGroup := r.Group("tasks")
-	{
-		taskGroup.POST("", taskCnt.uploadTaskItem)
+		r,
 	}
 }
 func GetHTTPErrorCode(err domain.CustomeError) int {
@@ -42,19 +42,22 @@ func GetHTTPErrorCode(err domain.CustomeError) int {
 	}
 }
 
-func (taskCnt *taskHandler) uploadTaskItem(ctx *gin.Context) {
+func (taskCnt *TaskHandler) UploadTaskItem(ctx *gin.Context) {
 	var newTaskItem dto.TaskCreateDTO
 
-	if err := ctx.ShouldBindJSON(newTaskItem); err != nil {
+	if err := ctx.ShouldBindJSON(&newTaskItem); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
 	if err := taskCnt.u.CreateTask(&newTaskItem); err != nil {
-		ctx.JSON(GetHTTPErrorCode(*err), gin.H{
-			"error": err.Error(),
-		})
+		var customErr *domain.CustomeError
+		if errors.As(err, &customErr) {
+			ctx.JSON(GetHTTPErrorCode(*customErr), gin.H{"error": customErr.Error()})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	ctx.JSON(http.StatusCreated, gin.H{
@@ -62,7 +65,7 @@ func (taskCnt *taskHandler) uploadTaskItem(ctx *gin.Context) {
 	})
 }
 
-func (taskCnt *taskHandler) GetTaskByID(ctx *gin.Context) {
+func (taskCnt *TaskHandler) GetTaskByID(ctx *gin.Context) {
 	rawID := ctx.Param("id")
 	taskID, err := uuid.Parse(rawID)
 	if err != nil {
@@ -71,7 +74,12 @@ func (taskCnt *taskHandler) GetTaskByID(ctx *gin.Context) {
 	}
 	task, errUc := taskCnt.u.GetTask(taskID)
 	if errUc != nil {
-		ctx.JSON(GetHTTPErrorCode(*errUc), gin.H{"error": errUc.Error()})
+		var customErr *domain.CustomeError
+		if errors.As(errUc, &customErr) {
+			ctx.JSON(GetHTTPErrorCode(*customErr), gin.H{"error": customErr.Error()})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": errUc.Error()})
 		return
 	}
 	ctx.JSON(http.StatusCreated, gin.H{
@@ -79,36 +87,44 @@ func (taskCnt *taskHandler) GetTaskByID(ctx *gin.Context) {
 	})
 }
 
-func (h *taskHandler) GetAllTasks(c *gin.Context) {
+func (h *TaskHandler) GetAllTasks(ctx *gin.Context) {
 	tasks, err := h.u.ListTasks()
 	if err != nil {
-		c.JSON(GetHTTPErrorCode(*err), gin.H{"error": err.Error()})
+		var customErr *domain.CustomeError
+		if errors.As(err, &customErr) {
+			ctx.JSON(GetHTTPErrorCode(*customErr), gin.H{"error": customErr.Error()})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, tasks)
+	ctx.JSON(http.StatusOK, tasks)
 }
 
-func (taskCnt *taskHandler) UpdateTask(ctx *gin.Context) {
-	var newTaskItem dto.TaskCreateDTO
+func (taskCnt *TaskHandler) UpdateTask(ctx *gin.Context) {
+	var newTaskItem dto.TaskUpdateDTO
 
-	if err := ctx.ShouldBindJSON(newTaskItem); err != nil {
+	if err := ctx.ShouldBindJSON(&newTaskItem); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
-	if err := taskCnt.u.CreateTask(&newTaskItem); err != nil {
-		ctx.JSON(GetHTTPErrorCode(*err), gin.H{
-			"error": err.Error(),
-		})
+	if err := taskCnt.u.UpdateTask(&newTaskItem); err != nil {
+		var customErr *domain.CustomeError
+		if errors.As(err, &customErr) {
+			ctx.JSON(GetHTTPErrorCode(*customErr), gin.H{"error": customErr.Error()})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	ctx.JSON(http.StatusCreated, gin.H{
-		"message": newTaskItem,
+		"message": "task updated successfuly",
 	})
 }
 
-func (taskCnt *taskHandler) DeleteTask(ctx *gin.Context) {
+func (taskCnt *TaskHandler) DeleteTask(ctx *gin.Context) {
 	rawID := ctx.Param("id")
 	taskID, err := uuid.Parse(rawID)
 	if err != nil {
@@ -117,7 +133,12 @@ func (taskCnt *taskHandler) DeleteTask(ctx *gin.Context) {
 	}
 	errUc := taskCnt.u.DeleteTask(taskID)
 	if errUc != nil {
-		ctx.JSON(GetHTTPErrorCode(*errUc), gin.H{"error": errUc.Error()})
+		var customErr *domain.CustomeError
+		if errors.As(errUc, &customErr) {
+			ctx.JSON(GetHTTPErrorCode(*customErr), gin.H{"error": customErr.Error()})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": errUc.Error()})
 		return
 	}
 	ctx.JSON(http.StatusAccepted, gin.H{
@@ -125,8 +146,8 @@ func (taskCnt *taskHandler) DeleteTask(ctx *gin.Context) {
 	})
 }
 
-func (taskCnt *taskHandler) GetTasksByStatus(ctx *gin.Context) {
-	statusID := ctx.Param("id")
+func (taskCnt *TaskHandler) GetTasksByStatus(ctx *gin.Context) {
+	statusID := ctx.Query("status")
 	if !dto.ValidStatus(statusID) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task status"})
 		return

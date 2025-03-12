@@ -75,7 +75,7 @@ func (taskUC *taskItemUC) UpdateTask(task *dto.TaskUpdateDTO) error {
 	if !dto.ValidStatus(task.Status) {
 		return domain.NewCustomeError(domain.ERR_BAD_REQUEST, "status must be pending, in_progress, or completed.")
 	}
-	return taskUC.repo.Update(task)
+	return taskUC.repo.Update(task.ToTaskModel())
 }
 
 func (taskUC *taskItemUC) DeleteTask(id uuid.UUID) error {

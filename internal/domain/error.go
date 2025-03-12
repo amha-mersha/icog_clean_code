@@ -22,6 +22,6 @@ func (e *CustomeError) ErrCode() string {
 	return e.Code
 }
 
-func NewCustomeError(code string, message string) error {
+func NewCustomeError(code string, message string) *CustomeError {
 	return &CustomeError{Code: code, Message: message}
 }

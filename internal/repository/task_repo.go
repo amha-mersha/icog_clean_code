@@ -50,7 +50,12 @@ func (repo *taskItemRepo) Update(task *domain.TaskItem) error {
 		return domain.NewCustomeError(domain.ERR_INTERNAL_SERVER, err.Error())
 	}
 
-	if err := repo.db.Save(&task).Error; err != nil {
+	if err := repo.db.Model(&task).Updates(domain.TaskItem{
+		Title:       task.Title,
+		Description: task.Description,
+		Deadline:    task.Deadline,
+		Status:      task.Status,
+	}).Error; err != nil {
 		return domain.NewCustomeError(domain.ERR_INTERNAL_SERVER, err.Error())
 	}
 
